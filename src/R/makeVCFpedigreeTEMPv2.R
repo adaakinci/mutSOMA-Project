@@ -1,10 +1,9 @@
-makeVCFpedigreeTEMPv2<-function(genome.size, input.dir, tree13, tree14)
+makeVCFpedigreeTEMPv2<-function(genome.size, input.dir, tree13, tree14, sample.info.path)
 {
-
-  genome.size<-mean(135511238,181088836)
   
+  #genome.size<-mean(389369818, 389848942)
   
-  vcf<-read.vcfR(tree13,verbose=TRUE)
+  vcf <- read.vcfR(tree13, verbose = TRUE)
   fix<- vcf@fix
   gt <- vcf@gt[,-1]
   #gt[,1]<-sub("\t", "", gt[,1])
@@ -25,7 +24,7 @@ makeVCFpedigreeTEMPv2<-function(genome.size, input.dir, tree13, tree14)
   vcf14<-vcf[which(duplicated(vcf[,"ID"]) == FALSE),]
   
   
-  vcf<-read.vcfR(tree14, verbose=TRUE)
+  vcf <- read.vcfR(tree14, verbose = TRUE)
   fix<- vcf@fix
   gt <- vcf@gt[,-1]
   #gt[,1]<-sub("\t", "", gt[,1])
@@ -36,7 +35,6 @@ makeVCFpedigreeTEMPv2<-function(genome.size, input.dir, tree13, tree14)
   }
   
   vcf<-cbind(fix[,c(1:5)], gt)
-  
   
   ### Keeping only clear SNP substitutions, with a single alternative allele
   vcf<-vcf[which(vcf[,"REF"] %in% c("A", "C", "G", "T")),]
@@ -76,6 +74,15 @@ makeVCFpedigreeTEMPv2<-function(genome.size, input.dir, tree13, tree14)
   out3<-sapply(out3, length)
   index<-which(out3 > 1)
   vcf<-vcf[index,]
+  
+  num_mutations <- nrow(vcf)
+  cat("Number of detected mutations:", num_mutations, "\n")
+  
+  # Save merged and filtered VCF data as tab-delimited text
+  write.table(vcf,
+              file = file.path(input.dir, "relaxed_merged_filtered_vcf_tree13_tree14.txt"),
+              sep = "\t", quote = FALSE, row.names = FALSE)
+  
   vcf<-vcf[,which(is.element(colnames(vcf), c("tree13.4", "tree14.1")) == FALSE)]
   
   for (a in 1:length(5:ncol(vcf)))
@@ -161,10 +168,11 @@ makeVCFpedigreeTEMPv2<-function(genome.size, input.dir, tree13, tree14)
   div<-data.frame(pair1, pair2, div)
   
   ## Get Dmatrix
-  pedigree <- read.table(file.path(input.dir, "D-matrix_SingleCGfiltered.txt"), header = TRUE)
+  pedigree <- read.table(file.path("/Users/adaakinci/Desktop/additional_files/D-matrix_SingleCGfiltered.txt"), header = TRUE)
   pedigree<-pedigree[,c(4,5,6)]
-  sample.info <- read.csv(file.path(input.dir, "sample_info.csv"), header = TRUE)
-
+  #sample.info <- read.csv(file.path("/Users/adaakinci/Desktop/additional_files/sample_info.csv"), header = TRUE)
+  sample.info <- read.csv(sample.info.path, header = TRUE)
+  
   pedigree.out<-makePHYLO(tall=330, pedigree = pedigree, sample.info = sample.info)
   pedigree<-pedigree.out[[2]]
   
@@ -195,11 +203,10 @@ makeVCFpedigreeTEMPv2<-function(genome.size, input.dir, tree13, tree14)
   #dthis<-as.numeric(pedigree2[,2]) + as.numeric(pedigree2[,3]) - as.numeric(2*pedigree2[,1])
   #plot(dthis, pedigree2[,4])
   
-  output<-list(pedigree2, pedigree)
-  names(output)<-c("pedigree", "pedigree.augmented")
+  output<-list(pedigree2, pedigree, num_mutations)
+  names(output)<-c("pedigree", "pedigree.augmented", "num_mutations")
   
   output
   
 }
-
 

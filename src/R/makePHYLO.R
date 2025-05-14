@@ -1,6 +1,3 @@
-Sample_info_csv <- "/Users/adaakinci/Desktop/sample_info.csv"
-sample_info <- read.csv(Sample_info_csv, header=T, sep=",")
-
 makePHYLO<-function(tall, pedigree, sample.info = sample_info){
 
   t13<-330
@@ -54,7 +51,6 @@ makePHYLO<-function(tall, pedigree, sample.info = sample_info){
   colnames(pslim)<-c("time0", "time1", "time2", "D.value")
   
   out<-list(pslim, pdata)
-  print(out)
   
 } # End of function        
 
