@@ -1,5 +1,5 @@
 from scipy.linalg import expm, logm
-
+import time
 
 # Loading pedigree data
 def load_pedigree(path):
@@ -138,7 +138,7 @@ def get_divergence_effects():
 
 # --------------------------------------------DIVERGENCE CALCULATION----------------------------------------
 
-#Calculating the expected genetic divergence between genotypes over time
+# Calculating the expected genetic divergence between genotypes over time
 def calculate_divergence(pedigree_data, initial_state_probs, mutation_rate):
     G = transition_matrix_construction(mutation_rate)
     rate_matrix = logm(G)
@@ -161,6 +161,7 @@ def calculate_divergence(pedigree_data, initial_state_probs, mutation_rate):
         time_diff_1_0 = time_1 - time_0
         time_diff_2_0 = time_2 - time_0
 
+        # Calculating genotype probabilities at time1 and time2 with matrices
         for i in range(16):
             start = np.eye(16)[i]
             prob_gen1 = np.dot(start, expm(time_diff_1_0 * rate_matrix))
@@ -173,6 +174,7 @@ def calculate_divergence(pedigree_data, initial_state_probs, mutation_rate):
         prob_generation2 = np.array(prob_generation2)
 
         div = 0
+        # Calculating total expected divergence across all genotypes
         for j in range(16):
             joint_prob = np.outer(prob_generation1[j], prob_generation2[j])
             weighted_div = prob_generation0[j] * np.sum(divergence_effects * joint_prob)
@@ -216,12 +218,13 @@ def LSE(parameters, pedigree_data, initial_state_probs):
 # -----------------------------------------------MUTSOMA MAIN------------------------------------------
 import numpy as np
 from scipy.optimize import minimize
+import pandas as pd
+import os
 import pprint
 
 
-def mutSoma(pedigree_path, base_probs, prop_het=0.1, num_starts=50):
-    pedigree_data = np.loadtxt(pedigree_path, delimiter='\t', skiprows=1)
-    #delta_times = pedigree_data[:, 1] + pedigree_data[:, 2] - 2 * pedigree_data[:, 0]
+def mutSoma(pedigree_path, base_probs, prop_het, num_starts, out_dir, out_name):
+    pedigree_data = load_pedigree(pedigree_path)
     initial_state_probs = initial_probabilities(base_probs, prop_het)
 
     # Normalize pedigree so all time0 values are zero
@@ -232,6 +235,7 @@ def mutSoma(pedigree_path, base_probs, prop_het=0.1, num_starts=50):
     # Storing all optimization results
     opt_results = []
 
+    num_starts = int(num_starts)
     for i in range(num_starts):
         gamma_start = 10 ** np.random.uniform(np.log10(1e-11), np.log10(1e-3))
         intercept_start = np.random.uniform(0, np.max(pedigree_data[:, 3]))
@@ -259,23 +263,26 @@ def mutSoma(pedigree_path, base_probs, prop_het=0.1, num_starts=50):
 
         opt_results.append(result_info)
 
+    # Storing valid results
     valid_results = []
     for res in opt_results:
         if res["success"] and res["gamma"] > 0 and res["intercept"] > 0:
             valid_results.append(res)
 
+    # Sorting valid results from lowest to highest LSE value
     valid_results.sort(key=lambda result: result["LSE"])
 
+    # Storing invalid results
     flagged_results = []
     for res in opt_results:
         if res not in valid_results:
             flagged_results.append(res)
 
-    # Summary
+    # Printing a summary
     if len(valid_results) > 0:
         best_estimations = valid_results[0]
 
-        for_fit_plot = calculation_plot_values(pedigree_data, initial_state_probs, best_estimations["gamma"],
+        plot = calculation_plot_values(pedigree_data, initial_state_probs, best_estimations["gamma"],
                                                best_estimations["intercept"])
 
         print("Run       LSE             Gamma        Intercept              Gamma.start      Intercept.start")
@@ -301,11 +308,24 @@ def mutSoma(pedigree_path, base_probs, prop_het=0.1, num_starts=50):
                 ["optim.method", "Nelder-Mead"]
             ],
             "model": "mutSOMA.py",
-            "for_fit_plot": for_fit_plot.tolist(),
+            "plot": plot.tolist(),
             "input": pedigree_data
         }
 
+        # Writing results in a txt file
+        combined_path = os.path.join(out_dir, f"{out_name}_summary.txt")
+
+        with open(combined_path, "w") as f:
+            f.write("VALID ESTIMATES:\n")
+            estimates_df = pd.DataFrame(valid_results)
+            estimates_df.to_csv(f, sep="\t", index=False)
+
+            f.write("\n\nSETTINGS:\n")
+            settings_df = pd.DataFrame(output["settings"], columns=["Parameter", "Value"])
+            settings_df.to_csv(f, sep="\t", index=False)
+
         pprint.pprint(output)
+
         return output
 
     else:
@@ -313,12 +333,10 @@ def mutSoma(pedigree_path, base_probs, prop_het=0.1, num_starts=50):
         return {}
 
 
-# --------------------------------------------PLOTTING--------------------------------------------
+# --------------------------------------------PLOT--------------------------------------------
 import matplotlib
-
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-
 
 def plot_predicted_vs_observed(for_fit_plot, used_input):
     observed_delta_t = used_input[:, 1] + used_input[:, 2] - 2 * used_input[:, 0]
@@ -332,24 +350,28 @@ def plot_predicted_vs_observed(for_fit_plot, used_input):
     # Plot observed points
     plt.scatter(
         observed_delta_t, observed_div,
-        color='royalblue', s=40, label='Observed',
-        alpha=0.6, edgecolor='black', linewidth=0.5
+        color='royalblue', s=40, label='Observed Divergence Points',
+        alpha=0.6, edgecolor='black', linewidth=0.5, zorder=2
     )
 
     # Plot predicted line
     plt.plot(
         predicted_delta_t, predicted_div,
-        color='#E30B5D', linewidth=2.5, label='Predicted'
+        color='#E30B5D', linewidth=2.2, label='Predicted Divergence Line', zorder=1
     )
 
+    # Plot predicted points
     plt.scatter(
         predicted_delta_t, predicted_div,
-        color='#5d2cc7', s=40, marker='X', label='Predicted Points',
-        alpha=0.8, edgecolor='black', linewidth=0.5
+        color='#4FB06D', s=80, marker='X', label='Predicted Divergence Points',
+        alpha=0.7, edgecolor='black', linewidth=0.5, zorder=3
     )
 
-    # Styling
-    plt.title("Predicted vs Observed Divergence", fontsize=16, weight='bold')
+    plt.yscale('log')
+    plt.yticks(
+        [1e-9, 1e-8, 1e-7, 1e-6, 1e-5],
+        labels=[r"$10^{-9}$", r"$10^{-8}$", r"$10^{-7}$", r"$10^{-6}$", r"$10^{-5}$"]
+    )
     plt.xlabel("Delta Time (Δt)", fontsize=14)
     plt.ylabel("Divergence", fontsize=14)
     plt.legend(fontsize=12)
@@ -357,39 +379,19 @@ def plot_predicted_vs_observed(for_fit_plot, used_input):
     plt.xticks(fontsize=12)
     plt.yticks(fontsize=12)
     plt.tight_layout()
-    plt.savefig("/Users/adaakinci/PycharmProjects/mutSOMA2/plot.png", dpi=300)
+    plt.savefig("/Users/adaakinci/Desktop/divergence_plot_python_strict6_log.png", dpi=300)
     plt.close()
 
-
 # -----------------------------------------------MAIN--------------------------------------------
-# Entry point
-if __name__ == "__main__":
-    import time
-    base_probs = [0.3317790, 0.1685361, 0.3312982, 0.1683867]
-    pedigree_path = "/Users/adaakinci/PycharmProjects/mutSOMA2/makeVCFpedigree_output.txt"
-
-    start_time = time.time()  # ⏱ start timing
-
-    output = mutSoma(pedigree_path, base_probs)
-
-    end_time = time.time()  # ⏱ end timing
-    print(f"⏱ Runtime: {end_time - start_time:.4f} seconds")
-
-    #output = mutSoma(pedigree_path, base_probs)
-
-    best = output["estimates"][0]
-    print("Optimized gamma:", best["gamma"])
-    print("Optimized intercept:", best["intercept"])
-    initial_state_probs = initial_probabilities(base_probs, prop_het=0.1)
-    used_input = output["input"]
-
-    div_obs = used_input[:, 3]
-    div_pred = calculate_divergence(used_input[:, :3], initial_state_probs, best["gamma"]) + best["intercept"]
-
-    print("First 5 observed divergence values:", div_obs[:28])
-    print("First 5 predicted divergence values:", div_pred[:28])
-
-    predicted = calculate_divergence(used_input, initial_state_probs, best["gamma"])
-    print("First 5 predicted (no intercept):", predicted[:5])
-
-    plot_predicted_vs_observed(output["for_fit_plot"], output["input"])
+# if __name__ == "__main__":
+#
+#     base_probs = [0.3317790296076125, 0.16853610618087678, 0.3312981832086129, 0.16838668100289783]
+#
+#     start_time = time.time()
+#     output = mutSoma("/Users/adaakinci/Desktop/pedigree_tree13_strict6.vcf_tree14_strict6.vcf.txt", base_probs,
+#                      prop_het=0.1, num_starts=50, out_dir="/Users/adaakinci/Desktop/", out_name="mutsoma_tree13_14_strict6_to_plot.txt")
+#
+#     end_time = time.time()
+#     print(f"mutSoma completed in {end_time - start_time:.2f} seconds.")
+#
+#     plot_predicted_vs_observed(output["plot"], output["input"])
