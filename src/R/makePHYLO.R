@@ -1,12 +1,12 @@
-makePHYLO<-function(tall, pedigree, sample.info = sample_info){
+makePHYLO<-function(tall, pedigree, sample.info){
 
   t13<-330
   t14<-330
-  s13<-sample_info[which(sample_info[,"Stem"] == 13),]
+  s13<-sample.info[which(sample.info[,"Stem"] == 13),]
   s13[,"Branchpoint_date"]<-t13- s13[,"Branchpoint_date"]
-  s14<-sample_info[which(sample_info[,"Stem"] == 14),]
+  s14<-sample.info[which(sample.info[,"Stem"] == 14),]
   s14[,"Branchpoint_date"]<-t14 - s14[,"Branchpoint_date"]
-  sample_info<-rbind(s13, s14)
+  sample.info<-rbind(s13, s14)
   
   time1<-NULL
   time2<-NULL
@@ -17,8 +17,8 @@ makePHYLO<-function(tall, pedigree, sample.info = sample_info){
   {
     
     temp0<-pedigree[a,]
-    pair1<-sample_info[which(as.character(sample_info[,1]) == as.character(temp0[,1])),]
-    pair2<-sample_info[which(as.character(sample_info[,1]) == as.character(temp0[,2])),]
+    pair1<-sample.info[which(as.character(sample.info[,1]) == as.character(temp0[,1])),]
+    pair2<-sample.info[which(as.character(sample.info[,1]) == as.character(temp0[,2])),]
     
     if (pair1[,"Stem"] == pair2[,"Stem"])
     {

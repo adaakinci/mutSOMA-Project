@@ -1,4 +1,4 @@
-makeVCFpedigreeTEMPv2<-function(genome.size, input.dir, tree13, tree14, sample.info.path)
+makeVCFpedigreeTEMPv2<-function(genome.size, input.dir, tree13, tree14)
 {
   
   #genome.size<-mean(389369818, 389848942)
@@ -168,11 +168,10 @@ makeVCFpedigreeTEMPv2<-function(genome.size, input.dir, tree13, tree14, sample.i
   div<-data.frame(pair1, pair2, div)
   
   ## Get Dmatrix
-  pedigree <- read.table(file.path("/Users/adaakinci/Desktop/additional_files/D-matrix_SingleCGfiltered.txt"), header = TRUE)
-  pedigree<-pedigree[,c(4,5,6)]
-  #sample.info <- read.csv(file.path("/Users/adaakinci/Desktop/additional_files/sample_info.csv"), header = TRUE)
-  sample.info <- read.csv(sample.info.path, header = TRUE)
-  
+  pedigree <- read.table(paste(input.dir, "D-matrix_SingleCGfiltered.txt", sep=""), header=T)
+  pedigree <- pedigree[,c(4,5,6)]
+  sample.info <- read.csv(paste(input.dir, "sample_info.csv", sep=""), header=T)
+
   pedigree.out<-makePHYLO(tall=330, pedigree = pedigree, sample.info = sample.info)
   pedigree<-pedigree.out[[2]]
   
@@ -209,4 +208,5 @@ makeVCFpedigreeTEMPv2<-function(genome.size, input.dir, tree13, tree14, sample.i
   output
   
 }
+
 

@@ -88,15 +88,11 @@ for (a in 1:length(tree13.vec)){
   tree13.name<-tree13.vec[a]
   tree14.name<-tree14.vec[a]
   gs.in<-mean(gs13[a],gs14[a])
-  
-  #Path to Sample Metadata
-  sample_info_path <- file.path(input.data.dir, "sample_info.csv")
-  
+
   pedigree<-makeVCFpedigreeTEMPv2(genome.size=gs.in,
                                   input.dir = input.data.dir,
                                   tree13 = tree13.name,
-                                  tree14 = tree14.name, 
-                                  sample.info.path = sample_info_path)
+                                  tree14 = tree14.name)
   pedigree<-pedigree[[1]]
   
   tree13.basename <- basename(tree13.name)
