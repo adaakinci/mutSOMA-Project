@@ -77,12 +77,7 @@ makeVCFpedigreeTEMPv2<-function(genome.size, input.dir, tree13, tree14)
   
   num_mutations <- nrow(vcf)
   cat("Number of detected mutations:", num_mutations, "\n")
-  
-  # Save merged and filtered VCF data as tab-delimited text
-  write.table(vcf,
-              file = file.path(input.dir, "relaxed_merged_filtered_vcf_tree13_tree14.txt"),
-              sep = "\t", quote = FALSE, row.names = FALSE)
-  
+
   vcf<-vcf[,which(is.element(colnames(vcf), c("tree13.4", "tree14.1")) == FALSE)]
   
   for (a in 1:length(5:ncol(vcf)))
